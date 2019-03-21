@@ -539,7 +539,7 @@ class Convoutional_Neural_net(object):
 
 '''
 
-sheipepze gaitynas wesit max...
+avtomaturad rom ipovos shape egaa dasayenebeli (shesasworebeli)
 
 CONGRATULATIONS...
 
