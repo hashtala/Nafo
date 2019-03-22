@@ -531,7 +531,9 @@ class Convoutional_Neural_net(object):
             
             self.ws_theano_ann[j][0].set_value(weight_np)
             self.ws_theano_ann[j][1].set_value(bias_weight_np)
-            
+        
+        
+        self.weights_optimized = True
         print('Weights loaded sucesfully')
         print("You can run predict function or grab weights written in arrays")
 
