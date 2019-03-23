@@ -30,15 +30,15 @@ class Convoutional_Neural_net(object):
     
     def get_shape(self):
         shape = self.shape_x
-        for layer in self.CNN:
-            filter_w_h = layer[0][2]
+        for i in range(len(self.CNN)):
+            filter_w_h = np.int32(self.CNN[i][0][2])
             shape = shape - filter_w_h + 1
-            shape = shape/2 #if pool size changes it should be noted here
+            shape = np.floor(shape/2) #if pool size changes it should be noted here
             
             shape_squared = shape**2
              
            # shape = np.int32(shape*layer[0][0])
-        self.shape_ann_first = np.int32(shape_squared*layer[0][1])
+        self.shape_ann_first = np.int32(shape_squared*self.CNN[i][0][0])
         return None
                 
     def __init__(self, CNN = [], ANN = [], shape_x = 128):
@@ -124,7 +124,7 @@ class Convoutional_Neural_net(object):
 
                 
                 
-                temp_init_weight_ann = (np.random.randn(160,D)).astype(np.float32)
+                temp_init_weight_ann = (np.random.randn(self.shape_ann_first,D)).astype(np.float32)
                 temp_init_bias_ann = np.zeros(D, dtype = np.float32)
                 self.ws_init_ann.append((temp_init_weight_ann, temp_init_bias_ann))
             
@@ -266,10 +266,14 @@ class Convoutional_Neural_net(object):
         updates_array = []
         
         for i in range(0, len(self.CNN)):
-                W_up = self.ws_theano_cnn[i][0] + mu_cnn*self.dws_theano_cnn[i][0] - lr_cnn*T.grad(cost, self.ws_theano_cnn[i][0])
-                b_up = self.ws_theano_cnn[i][1] + mu_cnn*self.dws_theano_cnn[i][1] - lr_cnn*T.grad(cost, self.ws_theano_cnn[i][1])
-                dW_up = self.dws_theano_cnn[i][0] - lr_cnn*T.grad(cost, self.ws_theano_cnn[i][0])
-                db_up = self.dws_theano_cnn[i][1] - lr_cnn*T.grad(cost, self.ws_theano_cnn[i][1])
+                
+                gradient_weight_cost = T.grad(cost, self.ws_theano_cnn[i][0])
+                gradient_bias_cost = T.grad(cost, self.ws_theano_cnn[i][1])
+            
+                W_up = self.ws_theano_cnn[i][0] + mu_cnn*self.dws_theano_cnn[i][0] - lr_cnn*gradient_weight_cost
+                b_up = self.ws_theano_cnn[i][1] + mu_cnn*self.dws_theano_cnn[i][1] - lr_cnn*gradient_bias_cost
+                dW_up = W_up - self.ws_theano_cnn[i][0]
+                db_up = b_up - self.ws_theano_cnn[i][1]
                 updates_array.append((self.ws_theano_cnn[i][0], W_up))
                 updates_array.append((self.ws_theano_cnn[i][1], b_up))
                 updates_array.append((self.dws_theano_cnn[i][0], dW_up))
@@ -279,10 +283,15 @@ class Convoutional_Neural_net(object):
        # print(graded)
 
         for i in range(0, len(self.ANN)):
-                W_upa = self.ws_theano_ann[i][0] + mu_ann*self.dws_theano_ann[i][0] -lr_ann* T.grad(cost, self.ws_theano_ann[i][0])
-                b_upa = self.ws_theano_ann[i][1] + mu_ann*self.dws_theano_ann[i][1] - lr_ann*T.grad(cost, self.ws_theano_ann[i][1])
-                dW_upa = self.dws_theano_ann[i][0] - lr_ann*T.grad(cost, self.ws_theano_ann[i][0])
-                db_upa = self.dws_theano_ann[i][1] - lr_ann*T.grad(cost, self.ws_theano_ann[i][1])
+            
+                gradient_weight_cost = T.grad(cost, self.ws_theano_ann[i][0])
+                gradient_bias_cost = T.grad(cost, self.ws_theano_ann[i][1])            
+            
+                W_upa = self.ws_theano_ann[i][0] + mu_ann*self.dws_theano_ann[i][0] - lr_ann*gradient_weight_cost
+                b_upa = self.ws_theano_ann[i][1] + mu_ann*self.dws_theano_ann[i][1] - lr_ann*gradient_bias_cost
+                dW_upa = W_upa - self.ws_theano_ann[i][0]
+                db_upa = b_upa -self.ws_theano_ann[i][1]
+                
                 updates_array.append((self.ws_theano_ann[i][0], W_upa))
                 updates_array.append((self.ws_theano_ann[i][1], b_upa))
                 updates_array.append((self.dws_theano_ann[i][0], dW_upa))
@@ -305,7 +314,7 @@ class Convoutional_Neural_net(object):
                 Y_batch = Y2[j*nbatches:j*nbatches + nbatches]
                 train(X_batch, Y_batch)
                 if i % print_period == 0:
-                    print('iteration ' + str(i) + ' batch ' + str(j))
+                    print('iteration ' + str(i) + ' batch ' + str(j + 1))
                     print('error rate ')
                     pred, cst = predict(X, Y2)
                     err = error_rate(Y, pred)
@@ -517,7 +526,7 @@ class Convoutional_Neural_net(object):
         for j in range(0, len(self.ANN)):
             
             if j == 0:
-                shape = (160, self.ANN[j][0][1]) #shape is ('x', N) self.ann_shape_first to be added
+                shape = (self.shape_ann_first, self.ANN[j][0][1]) #shape is ('x', N) self.ann_shape_first to be added
                 m, n = shape
             else:
                 
@@ -531,9 +540,9 @@ class Convoutional_Neural_net(object):
             
             self.ws_theano_ann[j][0].set_value(weight_np)
             self.ws_theano_ann[j][1].set_value(bias_weight_np)
-        
-        
+            
         self.weights_optimized = True
+
         print('Weights loaded sucesfully')
         print("You can run predict function or grab weights written in arrays")
 
@@ -541,7 +550,7 @@ class Convoutional_Neural_net(object):
 
 '''
 
-avtomaturad rom ipovos shape egaa dasayenebeli (shesasworebeli)
+sheipepze gaitynas wesit max...
 
 CONGRATULATIONS...
 
