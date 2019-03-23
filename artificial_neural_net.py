@@ -34,6 +34,7 @@ class Artificial_Neural_Net(object):
                  hidden_layer_sizes_funcs):
         #it takes list of tuples, and tules contain m and n of hidden
         #matrix + activation function
+        self.hidden_layer_sizes_funcs = hidden_layer_sizes_funcs
         self.hidden = []
         self.activations = []
         self.hidden_momentum = []
@@ -242,6 +243,47 @@ class Artificial_Neural_Net(object):
       
       #It works 
         
+
+    def get_weights(self):
+       # self.hidden[0][0]
+        counter  = 0
+        for layer in self.hidden:
+            weights = layer[0]
+            bias = layer[1]
+            
+            weight_np = np.array(weights.eval()).astype(np.float32)
+            bias_np = np.array(bias.eval()).astype(np.float32)
+            
+            
+            #ki, counter imitom davamate rom axlidan damezara for loopis dawera indexit...
+            
+            weight_np.tofile('weight' +str(counter) +'.dat')
+            bias_np.tofile('bias' + str(counter) + 'dat')
+            
+            counter += 1;
+            
+            
+    def load_weights(self):
+        
+        for i in range(len(self.hidden_layer_sizes_funcs)):
+            m, n = self.hidden_layer_sizes_funcs[i][0], self.hidden_layer_sizes_funcs[i][1]
+        
+            weight_np = np.load('weight' + str(i) + '.dat')
+            weight_np = weight_np.reshape(m, n)
+            
+            bias_np = np.load('bias' + str(i) + '.dat')
+            bias_np = bias_np.reshpe(n)
+            
+            self.hidden[i][0].set_value(weight_np)
+            self.hidden[i][0].set_value(bias_np)
+            
+        
+            
+
+      
+'''
+HUHUHUHUHU MUSHAOOOBS 
+'''
 
 '''
 THIS IS A CLASS Of ARTIFICIAL NEURAL NETWORK
