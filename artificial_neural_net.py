@@ -281,9 +281,7 @@ class Artificial_Neural_Net(object):
             
 
       
-'''
-HUHUHUHUHU MUSHAOOOBS 
-'''
+
 
 '''
 THIS IS A CLASS Of ARTIFICIAL NEURAL NETWORK
