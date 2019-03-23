@@ -550,9 +550,23 @@ class Convoutional_Neural_net(object):
 
 '''
 
-sheipepze gaitynas wesit max...
 
 CONGRATULATIONS...
+
+get weights works and cretes files
+
+load weights works 
+
+fit function works (gradient descent) 
+
+predict function works 
+
+init also works 
+
+shapes are set correctly 
+
+
+ravi meti araferia wesit iseti ho ?
 
 '''
     
