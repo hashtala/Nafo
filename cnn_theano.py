@@ -9,7 +9,7 @@ import numpy as np
 import theano as theako
 import theano.tensor as T
 from theano.tensor.signal.pool import pool_2d
-from Nafo.basic_functions import error_rate, y2ind
+from Nafo.basic_functions import error_rate, y2ind, shuffle
 
 
 
@@ -33,15 +33,22 @@ class Convoutional_Neural_net(object):
         for i in range(len(self.CNN)):
             filter_w_h = np.int32(self.CNN[i][0][2])
             shape = shape - filter_w_h + 1
-            shape = np.floor(shape/2) #if pool size changes it should be noted here
+            poolise_tup = self.CNN[i][2]
+            if poolise_tup != 0:
+                shape = np.floor(shape/poolise_tup[0])
+                            
+            if not self.isvector:
+                shape_squared = shape**2
+            else:
+                shape_squared = shape
+                
             
-            shape_squared = shape**2
              
            # shape = np.int32(shape*layer[0][0])
         self.shape_ann_first = np.int32(shape_squared*self.CNN[i][0][0])
         return None
                 
-    def __init__(self, CNN = [], ANN = [], shape_x = 128):
+    def __init__(self, CNN = [], ANN = [], shape_x = 128, isvector = False):
         #WORKS AS EXPECTED
         
     
@@ -64,7 +71,9 @@ class Convoutional_Neural_net(object):
         self.CNN = CNN
         self.ANN = ANN
         self.shape_x = shape_x
+        self.isvector = isvector;
         self.get_shape()
+ 
         '''
         
         initialize CNN filters first with numpy random arrays
@@ -86,7 +95,7 @@ class Convoutional_Neural_net(object):
             # W = width
             # H = height
             
-            temp_initial_weights = np.abs(np.random.randn(N,C,W,H)/(100))
+            temp_initial_weights = np.abs(np.random.randn(N,C,W,H))
             temp_initial_bias = np.abs(np.zeros(N, dtype = np.float32))
             self.ws_init_cnn.append((temp_initial_weights.astype(np.float32), temp_initial_bias))
             
@@ -123,7 +132,7 @@ class Convoutional_Neural_net(object):
             if i == 0:
 
                 
-                
+                #self.shape_ann_first
                 temp_init_weight_ann = (np.random.randn(self.shape_ann_first,D)).astype(np.float32)
                 temp_init_bias_ann = np.zeros(D, dtype = np.float32)
                 self.ws_init_ann.append((temp_init_weight_ann, temp_init_bias_ann))
@@ -226,17 +235,30 @@ class Convoutional_Neural_net(object):
         Yth = theako.tensor.matrix('Y', dtype = 'int32')
 
         conv_out = T.nnet.conv2d(Xth,self.ws_theano_cnn[0][0])
-        pooled = pool_2d(conv_out, ws =self.CNN[0][2], ignore_border = True, mode = 'max')
+        
+        if self.CNN[0][2] != 0:
+            pooled = pool_2d(conv_out, ws = self.CNN[0][2], ignore_border = True, mode = 'max')
+        else:   
+            pooled = conv_out
+            
         activated = self.CNN[0][1](pooled + self.ws_theano_cnn[0][1].dimshuffle('x', 0, 'x', 'x'))
         
         for i in range(1, len_cnn - 1):
                 conv_out = T.nnet.conv2d(activated, self.ws_theano_cnn[i][0])
-                pooled = pool_2d(conv_out, ws = self.CNN[i][2], ignore_border = True, mode = 'max')
+                if self.CNN[i][2] != 0:
+                    pooled = pool_2d(conv_out, ws = self.CNN[i][2], ignore_border = True, mode = 'max')
+                else:   
+                    pooled = conv_out
                 activated = self.CNN[i][1](pooled  + self.ws_theano_cnn[i][1].dimshuffle('x', 0, 'x', 'x'))
 
 
         conv_out = T.nnet.conv2d(activated, self.ws_theano_cnn[len_cnn - 1][0])
-        pooled = pool_2d(conv_out, ws = self.CNN[len_cnn - 1][2], ignore_border = True, mode = 'max')
+        
+        if self.CNN[len_cnn - 1][2] != 0:
+            pooled = pool_2d(conv_out, ws = self.CNN[len_cnn - 1][2], ignore_border = True, mode = 'max')
+        else:   
+            pooled = conv_out
+            
         activated = self.CNN[len_cnn - 1][1](pooled + self.ws_theano_cnn[len_cnn - 1][1].dimshuffle('x', 0, 'x', 'x'))      
         
         '''
@@ -257,7 +279,9 @@ class Convoutional_Neural_net(object):
         
        # Z = T.log(Z)
         
-        cost = -(Yth*T.log(Z)).sum()
+        cost = -((Yth*T.log(Z)).sum())
+        
+        Y_hat = Z.argmax(axis = 1)
         
         '''
         now weight updates
@@ -298,7 +322,6 @@ class Convoutional_Neural_net(object):
                 updates_array.append((self.dws_theano_ann[i][1], db_upa))
         
     
-        Y_hat = Z.argmax(axis = 1)
         
         predict = theako.function(inputs = [Xth, Yth], outputs = [Y_hat, cost], on_unused_input = 'ignore')
         train = theako.function(inputs = [Xth, Yth], updates = updates_array, on_unused_input = 'ignore')
@@ -308,10 +331,10 @@ class Convoutional_Neural_net(object):
       #  print(FILT)
         
         for i in range(0, epoch):
-            train(X, Y2)
             for j in range(nbatches):
-                X_batch = X[j*nbatches:j*nbatches + nbatches]
-                Y_batch = Y2[j*nbatches:j*nbatches + nbatches]
+                X_shuffled, Y2_shuffled = shuffle(X, Y2, shuffles = 1000)
+                X_batch = X_shuffled[j*batch_size:j*batch_size + batch_size]
+                Y_batch = Y2_shuffled[j*batch_size:j*batch_size + batch_size]
                 train(X_batch, Y_batch)
                 if i % print_period == 0:
                     print('iteration ' + str(i) + ' batch ' + str(j + 1))
@@ -550,23 +573,9 @@ class Convoutional_Neural_net(object):
 
 '''
 
+sheipepze gaitynas wesit max...
 
 CONGRATULATIONS...
-
-get weights works and cretes files
-
-load weights works 
-
-fit function works (gradient descent) 
-
-predict function works 
-
-init also works 
-
-shapes are set correctly 
-
-
-ravi meti araferia wesit iseti ho ?
 
 '''
     
