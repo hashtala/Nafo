@@ -31,7 +31,7 @@ class DCGAN(object):
                  lr_gen = 10e-3,
                  batch = 100,
                  activation = tf.nn.sigmoid,
-                 projection = 140,
+                 projection = 128,
                  startdim = 7,
                  isvecyot = False,
                  latent_dim = 200
@@ -83,8 +83,8 @@ class DCGAN(object):
         self.discriminator_parametes = [param for param in tf.trainable_variables() if param.name.startswith('D')]
         self.generator_parameters = [p for p in tf.trainable_variables() if p.name.startswith('G')]
         
-        self.d_train_operation = tf.train.AdamOptimizer(self.lr_disc).minimize(self.d_cost, var_list = self.discriminator_parametes)
-        self.g_train_operation = tf.train.AdamOptimizer(self.lr_gen).minimize(self.g_cost, var_list = self.generator_parameters)
+        self.d_train_operation = tf.train.AdamOptimizer(self.lr_disc, 0.5, 0.99).minimize(self.d_cost, var_list = self.discriminator_parametes)
+        self.g_train_operation = tf.train.AdamOptimizer(self.lr_gen, 0.5, 0.99).minimize(self.g_cost, var_list = self.generator_parameters)
     
       
         
@@ -100,19 +100,19 @@ class DCGAN(object):
         with tf.variable_scope('Discriminator_conv', reuse = tf.AUTO_REUSE):
             
             #fitler height, filter width, input maps, output maps
-            init_filter1 = np.random.randn(5, 5, 1, 10).astype(np.float32)
+            init_filter1 = np.random.randn(3, 3, 1, 10).astype(np.float32)
             self.filter1 = tf.get_variable('filte1_disc', initializer = init_filter1)
             init_bias1 = np.zeros(10).astype(np.float32)
             self.bias1 = tf.get_variable('bias1_disc', initializer = init_bias1)
             
             
-            init_filter2 = np.random.randn(5, 5, 10, 10).astype(np.float32)
+            init_filter2 = np.random.randn(3, 3, 10, 10).astype(np.float32)
             self.filter2 = tf.get_variable('filte2_disc', initializer = init_filter2)
             init_bias2 = np.zeros(10).astype(np.float32)
             self.bias2 = tf.get_variable('bias2_disc', initializer = init_bias2)
             
             
-            init_filter3 = np.random.randn(5, 5, 10, 10).astype(np.float32)
+            init_filter3 = np.random.randn(3, 3, 10, 10).astype(np.float32)
             self.filter3 = tf.get_variable('filte3_disc', initializer = init_filter3)
             init_bias3 = np.zeros(10).astype(np.float32)
             self.bias3 = tf.get_variable('bias3_disc', initializer = init_bias3)
@@ -197,15 +197,11 @@ class DCGAN(object):
         
         
         with tf.variable_scope('Generator_ANN', reuse = tf.AUTO_REUSE):
-            init_weight_gen_ann = np.random.randn(self.latent_dim,800).astype(np.float32)
+            init_weight_gen_ann = np.random.randn(self.latent_dim,last_dim_neural).astype(np.float32)
             self.weight1_gen_ann = tf.get_variable('jela', initializer = init_weight_gen_ann)
-            init_bias_gen_ann = np.zeros(800, dtype = np.float32)
-            self.bias_gen_ann = tf.get_variable('jela_bias', initializer = init_bias_gen_ann)
-            init_weight2_gen_ann = np.random.randn(800, last_dim_neural).astype(np.float32)
-            self.weigh2_gen_ann = tf.get_variable('jela_dva', initializer = init_weight2_gen_ann)
             init_bias_gen_ann = np.zeros(last_dim_neural, dtype = np.float32)
-            self.bias2_gen_ann = tf.get_variable('jela_bias_dva', initializer = init_bias_gen_ann)
-            
+            self.bias_gen_ann = tf.get_variable('jela_bias', initializer = init_bias_gen_ann)
+     
             
             
            
@@ -213,19 +209,26 @@ class DCGAN(object):
         #now let's create filters 
         
         with tf.variable_scope('Generator_conv', reuse = tf.AUTO_REUSE):
-            init_filt1_gen = np.random.randn(5,5, 70, 140).astype(np.float32) #outputs N, 8, 8, 70
+            init_filt1_gen = np.random.randn(5,5, int(self.projection/2), self.projection).astype(np.float32) #outputs N, 8, 8, 70
             self.filt1_gen = tf.get_variable('filt1_gen', initializer = init_filt1_gen)
-            init_bias1_gen = np.random.randn(70).astype(np.float32)
+            init_bias1_gen = np.random.randn(int(self.projection/2)).astype(np.float32)
             self.bias1_gen = tf.get_variable('bias1_gen', initializer = init_bias1_gen)
             
-            init_filt_bridge = np.random.randn(5,5,70, 70).astype(np.float32)
+            init_filt_bridge = np.random.randn(5,5,int(self.projection/4),int(self.projection/2)).astype(np.float32)
             self.filter_bridge = tf.get_variable('filter_bridged_gen', initializer = init_filt_bridge)
-            init_bias2_bridged = np.random.randn(70).astype(np.float32)
+            init_bias2_bridged = np.zeros(int(self.projection/4)).astype(np.float32)
             self.bias_bridged = tf.get_variable('bias_bridged', initializer =init_bias2_bridged)
+            
+            init_filt_bridge2 = np.random.randn(5,5,int(self.projection/8),int(self.projection/4)).astype(np.float32)
+            self.filter_bridge2 = tf.get_variable('filter_bridged_gen2', initializer = init_filt_bridge2)
+            init_bias2_bridged2 = np.zeros(int(self.projection/8)).astype(np.float32)
+            self.bias_bridged2 = tf.get_variable('bias_bridged2', initializer =init_bias2_bridged2)            
+            
+            
             
             del init_filt1_gen, init_bias1_gen, init_filt_bridge, init_bias2_bridged
             
-            init_filt2_gen = np.random.randn(5,5, 1, 70).astype(np.float32) #outputs N, 8, 8, 70
+            init_filt2_gen = np.random.randn(5,5, 1,int(self.projection/8)).astype(np.float32) #outputs N, 8, 8, 70
             self.filt2_gen = tf.get_variable('filt2_gen', initializer = init_filt2_gen)
             init_bias2_gen = np.random.randn(1).astype(np.float32)
             self.bias2_gen = tf.get_variable('bias2_gen', initializer = init_bias2_gen)
@@ -246,27 +249,44 @@ class DCGAN(object):
         gela = tf.nn.relu(tf.matmul(z_dot_w1, self.weigh2_gen_ann) + self.bias2_gen_ann)
         
         projected = tf.reshape(gela, [-1, self.startdim, self.startdim, self.projection])
-        
+        #print(projected.shape)
         projected = tf.contrib.layers.batch_norm(projected, is_training = is_training)
-        projected = tf.nn.leaky_relu(projected)
+        projected = tf.nn.relu(projected)
         
     
         
-        first_convolved = tf.nn.conv2d_transpose(projected, self.filt1_gen, output_shape = (self.batch,14,14,70), strides = [1, 2, 2,1], padding = 'SAME')
+        first_convolved = tf.nn.conv2d_transpose(projected, self.filt1_gen, output_shape = (self.batch,14,14,int(self.projection/2)), strides = [1, 2, 2,1], padding = 'SAME')
         first_convolved = tf.nn.bias_add(first_convolved, self.bias1_gen)
         first_convolved = tf.contrib.layers.batch_norm(first_convolved, is_training = is_training)
         first_convolved = tf.nn.relu(first_convolved)
+        #print(first_convolved.shape)
         
         
-        brige_convovle = tf.nn.conv2d_transpose(first_convolved, self.filter_bridge, output_shape = (self.batch, 14, 14, 70), strides =[ 1, 1,1 ,1], padding = 'SAME')
+        brige_convovle = tf.nn.conv2d_transpose(first_convolved, self.filter_bridge, output_shape = (self.batch, 14, 14, int(self.projection/4)), strides =[ 1, 1,1 ,1], padding = 'SAME')
         brige_convovle = tf.nn.bias_add(brige_convovle, self.bias_bridged)
         brige_convovle = tf.contrib.layers.batch_norm(brige_convovle, is_training = is_training)
         brige_convovle = tf.nn.relu(brige_convovle)
+        #print(brige_convovle.shape)
         
-        almost_image = tf.nn.conv2d_transpose(brige_convovle, self.filt2_gen, output_shape = (self.batch, 28, 28, 1), strides = [1, 2, 2, 1], padding = 'SAME')
+        brige_convovle2 = tf.nn.conv2d_transpose(brige_convovle, self.filter_bridge2, output_shape = (self.batch, 14, 14, np.int32(self.projection/8)), strides =[ 1, 1,1 ,1], padding = 'SAME')
+        brige_convovle2 = tf.nn.bias_add(brige_convovle2, self.bias_bridged2)
+        brige_convovle2 = tf.contrib.layers.batch_norm(brige_convovle2, is_training = is_training)
+        brige_convovle2 = tf.nn.relu(brige_convovle2)
+        #print(brige_convovle2.shape)
+        
+        #print(self.filt1_gen.shape)
+        #print(self.filter_bridge.shape) 
+        #print(self.filter_bridge2.shape) 
+       # print(self.filt2_gen.shape)
+        
+        almost_image = tf.nn.conv2d_transpose(brige_convovle2, self.filt2_gen, output_shape = (self.batch, 28, 28, 1), strides = [1, 2, 2, 1], padding = 'SAME')
         almost_image = tf.nn.bias_add(almost_image, self.bias2_gen)
-        almost_image = tf.contrib.layers.batch_norm(almost_image, is_training = is_training)
-       # init = tf.global_variables_initializer()
+        #print(almost_image.shape)
+        
+ 
+
+        #almost_image = tf.contrib.layers.batch_norm(almost_image, is_training = is_training)
+        #init = tf.global_variables_initializer()
         ##sess = tf.Session()
         #sess.run(init)
         almost_image = self.activation(almost_image)
@@ -288,7 +308,7 @@ class DCGAN(object):
 
 
 
-    def fit(self, X, epoch = 1000):
+    def fit(self, X, epoch = 2):
 
 
         #self.define_costs_params()  
@@ -305,9 +325,9 @@ class DCGAN(object):
                 
                 _, d_cost, accuracy = self.sess.run((self.d_train_operation, self.d_cost, self.accuracy), feed_dict = {self.Xtheano: X_batch})
                 
-                _, g_cost = self.sess.run((self.g_train_operation, self.g_cost), feed_dict = {self.Xtheano: X_batch})
-                _, g_cost = self.sess.run((self.g_train_operation, self.g_cost), feed_dict = {self.Xtheano: X_batch})
-                _, g_cost = self.sess.run((self.g_train_operation, self.g_cost), feed_dict = {self.Xtheano: X_batch})
+                _, g_cost = self.sess.run((self.g_train_operation, self.g_cost))
+                _, g_cost = self.sess.run((self.g_train_operation, self.g_cost))
+                _, g_cost = self.sess.run((self.g_train_operation, self.g_cost))
 
          
                 print('iteration ' + str(i) + ' batch ' + str(j))
@@ -354,7 +374,7 @@ class DCGAN(object):
 
 
 
-'''
+
 X = np.random.randn(201, 28, 28, 1).astype(np.float32)
 S = DCGAN(X)
 j = S.graph_and_logits(X)
@@ -363,5 +383,4 @@ nana = S.fit(X)
 
 S.discriminator_variables_initializer(X)
 
-preds = graph_and_get_image(100, False)
-'''
+#preds = graph_and_get_image(100, False)
